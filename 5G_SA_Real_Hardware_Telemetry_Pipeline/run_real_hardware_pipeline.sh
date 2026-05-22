@@ -60,7 +60,7 @@ sleep 6
 # สร้างหน้าต่างและแบ่งหน้าจอคู่สำหรับรัน Dashboard
 echo "🖥️  ระบบบูตเสร็จสมบูรณ์! กำลังเปิดหน้าจอแดชบอร์ดประเมินตำแหน่ง RTT/SNR..."
 tmux new-window -t "$SESSION_NAME" -n "Dashboard"
-tmux send-keys -t "${SESSION_NAME}:3" "python3 parse_t_tracer_ris.py" C-m
+tmux send-keys -t "${SESSION_NAME}:3" "cd /home/beam/Desktop/ORAN-ClosedLoop-Control/5G_SA_Real_Hardware_Telemetry_Pipeline && python3 parse_t_tracer_ris.py" C-m
 
 # เข้าสู่การแสดงผล TMUX ให้คุณ Beam สลับหน้าจอควบคุมได้อย่างอิสระ
 tmux select-window -t "${SESSION_NAME}:3"
