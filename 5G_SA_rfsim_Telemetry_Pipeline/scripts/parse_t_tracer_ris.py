@@ -26,29 +26,40 @@ PRINT_INTERVAL = 0.25 if sys.stdout.isatty() else 2.0  # Dynamic throttling for 
 
 def estimate_rtt_and_extract_iq(srs_buffer, ant_idx, port_idx, ue_id):
     try:
-        # 1. Convert byte buffer to complex numbers
-        # OAI c16_t is [real (int16), imag (int16)]
+        # T-Tracer 'buffer' fields contain a 4-byte length prefix.
+        # We start parsing raw samples (c16_t: 16-bit real, 16-bit imag) directly.
         raw_data = np.frombuffer(srs_buffer, dtype=np.int16)
+        
+        # Guard check to avoid empty or corrupt data
+        if len(raw_data) < 2:
+            return 0.0, -140.0, 0, 0.0, "0.0000+0.0000j"
+            
         complex_data = raw_data[0::2] + 1j * raw_data[1::2]
         
-        # 2. RTT Calculation via IFFT (Precision Peak Detection)
+        # 1. RTT Calculation via IFFT (Precision Peak Detection)
         time_domain = np.fft.ifft(complex_data)
         peak_idx = np.argmax(np.abs(time_domain))
         
         # Normalize index to positive delay
         dist_m = ((peak_idx / SAMPLING_RATE) * SPEED_OF_LIGHT) / 2.0
         
-        # 3. Calculate signal metrics directly from I/Q
+        # 2. Calculate average power & magnitude from raw I/Q samples
         avg_mag = np.mean(np.abs(complex_data))
         avg_power = np.mean(np.square(np.abs(complex_data)))
         
-        # Estimate RSRP in dBm (scaled for rfsimulator context)
-        rsrp_dbm = 10.0 * np.log10(avg_power + 1e-10) - 50.0
-        # Estimate SNR based on signal peak-to-average power ratio (PAPR)
+        # 3. Calculate RSRP in dBm directly from physical I/Q samples
+        # RSRP = 10 * log10(Average Power of Resource Elements carrying SRS)
+        # We normalize by the ADC full-scale range (16-bit signed integer max is 32768)
+        norm_power = avg_power / (32768.0 ** 2)
+        # Scaled dynamically: -140 dBm (min) to -40 dBm (max) for typical rfsimulator
+        rsrp_dbm = 10.0 * np.log10(norm_power + 1e-12) + 30.0  # +30dBm calibration offset for simulator
+        rsrp_dbm = np.clip(rsrp_dbm, -140.0, -40.0)
+        
+        # 4. Estimate SNR based on signal peak-to-average power ratio (PAPR)
         papr = np.max(np.square(np.abs(complex_data))) / (avg_power + 1e-10)
         snr_db = int(np.clip(10.0 * np.log10(papr + 1e-10), 5, 28))
         
-        # Extract first 3 IQ samples (normalized)
+        # Normalize first 3 IQ samples for visualization
         first_3 = complex_data[:3]
         iq_str = ", ".join([f"{c.real/32768.0:+.4f}{c.imag/32768.0:+.4f}j" for c in first_3])
         
@@ -56,7 +67,7 @@ def estimate_rtt_and_extract_iq(srs_buffer, ant_idx, port_idx, ue_id):
     except Exception as e:
         return 0.0, -140.0, 0, 0.0, "0.0000+0.0000j"
 
-def print_spatial_dashboard(ue_id, dist_ta, dist_rtt, rsrp_dbm, snr_db, beam_id, avg_mag, iq_str):
+def print_spatial_dashboard(ue_id, dist_ta, dist_rtt, rsrp_dbm, snr_db, beam_id, avg_mag, iq_str, rsrp_kpm=None):
     global LAST_PRINT_TIME
     current_time = time.time()
     if current_time - LAST_PRINT_TIME < PRINT_INTERVAL:
@@ -73,15 +84,21 @@ def print_spatial_dashboard(ue_id, dist_ta, dist_rtt, rsrp_dbm, snr_db, beam_id,
     print("=" * 68)
     print(" 📡           O-RAN SRS REAL-TIME SPATIAL POSITIONING           📡")
     print("=" * 68)
-    print(f" 👤 UE RNTI:          0x{ue_id:04X}")
+    print(f" 👤 UE RNTI:          0x{ue_id:04X} ({ue_id})")
     print(f" 🎯 RTT Distance:     {dist_rtt:.2f} m (From raw SRS I/Q via IFFT)")
     if dist_ta > 0:
         print(f" 📍 TA Distance:      {dist_ta:.2f} m")
     else:
         print(f" 📍 TA Distance:      Calculating...")
-    print(f" 📶 Estimated RSRP:   {rsrp_dbm:.1f} dBm")
-    print(f" 🌟 Estimated SNR:    {snr_db} dB")
-    print(f" ⚡ Avg IQ Magnitude: {avg_mag:.2f}")
+        
+    # Display RSRP: Prefer KPM measured RSRP if available, otherwise fallback to I/Q extracted SRS RSRP
+    if rsrp_kpm is not None and rsrp_kpm != 0.0:
+        print(f" 📶 Measured RSRP:    {rsrp_kpm:.1f} dBm (From gNB MAC Statistics)")
+    else:
+        print(f" 📶 Extracted RSRP:   {rsrp_dbm:.1f} dBm (Calculated from raw SRS I/Q)")
+        
+    print(f" 🌟 Estimated SNR:    {snr_db} dB (From I/Q PAPR)")
+    print(f" ⚡ Avg IQ Magnitude: {avg_mag:.2f} (Physical ADC level)")
     print(f" 🔮 First 3 IQ Norm:  [{iq_str}]")
     print("-" * 68)
     
@@ -89,7 +106,9 @@ def print_spatial_dashboard(ue_id, dist_ta, dist_rtt, rsrp_dbm, snr_db, beam_id,
     map_length = 40
     # Map range up to 100m for simulation
     pos = min(int((dist_rtt / 100.0) * map_length), map_length - 1)
-    sig_sym = "🟢" if rsrp_dbm >= -85 else "🟡" if rsrp_dbm >= -100 else "🔴"
+    
+    current_rsrp = rsrp_kpm if (rsrp_kpm is not None and rsrp_kpm != 0.0) else rsrp_dbm
+    sig_sym = "🟢" if current_rsrp >= -85 else "🟡" if current_rsrp >= -105 else "🔴"
     
     ascii_map = ["-"] * map_length
     if pos >= 0:
@@ -144,26 +163,32 @@ def run_xapp():
                             rtt_val = last_metrics.get(ue_id, {}).get('rtt', 0.0)
                             avg_mag = last_metrics.get(ue_id, {}).get('mag', 0.0)
                             iq_str = last_metrics.get(ue_id, {}).get('iq', "N/A")
-                            print_spatial_dashboard(ue_id, dist_ta, rtt_val, rsrp, snr, beam_id, avg_mag, iq_str)
-                            last_metrics[ue_id] = {'ta': dist_ta, 'rtt': rtt_val, 'mag': avg_mag, 'iq': iq_str}
+                            print_spatial_dashboard(ue_id, dist_ta, rtt_val, 0.0, snr, beam_id, avg_mag, iq_str, rsrp_kpm=rsrp)
+                            last_metrics[ue_id] = {'ta': dist_ta, 'rtt': rtt_val, 'mag': avg_mag, 'iq': iq_str, 'rsrp_kpm': rsrp}
                         
                     elif ev_id == ID_SRS:
                         # int,ue_id : int,ant_idx : int,port_idx : buffer,estimates
                         if len(payload) >= 12:
                             ue_id, ant, port = struct.unpack("iii", payload[:12])
-                            rtt_dist, rsrp_dbm, snr_db, avg_mag, iq_str = estimate_rtt_and_extract_iq(payload[12:], ant, port, ue_id)
+                            
+                            # Correction: Skip 4-byte buffer length prefix in T-Tracer binary protocol (payload[12:16]).
+                            # Raw complex signal data starts precisely at offset 16 (payload[16:]).
+                            srs_signal = payload[16:]
+                            
+                            rtt_dist, rsrp_dbm, snr_db, avg_mag, iq_str = estimate_rtt_and_extract_iq(srs_signal, ant, port, ue_id)
                             
                             # Keep track of metrics
                             if ue_id not in last_metrics:
-                                last_metrics[ue_id] = {'ta': 0.0, 'rtt': rtt_dist, 'mag': avg_mag, 'iq': iq_str}
+                                last_metrics[ue_id] = {'ta': 0.0, 'rtt': rtt_dist, 'mag': avg_mag, 'iq': iq_str, 'rsrp_kpm': None}
                             else:
                                 last_metrics[ue_id]['rtt'] = rtt_dist
                                 last_metrics[ue_id]['mag'] = avg_mag
                                 last_metrics[ue_id]['iq'] = iq_str
                                 
-                            # Since we don't have ID_METRICS in monolithic mode, print dashboard directly from SRS!
+                            # Display dashboard directly from SRS metrics!
                             ta_val = last_metrics[ue_id].get('ta', 0.0)
-                            print_spatial_dashboard(ue_id, ta_val, rtt_dist, rsrp_dbm, snr_db, 0, avg_mag, iq_str)
+                            rsrp_kpm_val = last_metrics[ue_id].get('rsrp_kpm', None)
+                            print_spatial_dashboard(ue_id, ta_val, rtt_dist, rsrp_dbm, snr_db, 0, avg_mag, iq_str, rsrp_kpm=rsrp_kpm_val)
                                 
                 except Exception as e:
                     # Skip corrupt bytes
