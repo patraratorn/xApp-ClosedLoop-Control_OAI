@@ -21,12 +21,12 @@ fi
 
 # 2. ปิดและเคลียร์โปรเซสตกค้างในระบบทั้งหมดแบบเฉียบขาด
 echo "🛡️ [2/3] ทำความสะอาดโปรเซส O-RAN ที่อาจตกค้างอยู่ในระบบ OS..."
-sudo pkill -9 -f nearRT-RIC || true
-sudo pkill -9 -f nr-softmodem || true
-sudo pkill -9 -f record || true
-sudo pkill -9 -f parse_t_tracer_ris.py || true
-sudo pkill -9 -f xapp_kpm_moni || true
-sudo pkill -9 -f sub.py || true
+echo 'bbEEam167' | sudo -S pkill -9 -f nearRT-RIC || true
+echo 'bbEEam167' | sudo -S pkill -9 -f nr-softmodem || true
+echo 'bbEEam167' | sudo -S pkill -9 -f record || true
+echo 'bbEEam167' | sudo -S pkill -9 -f parse_t_tracer_ris.py || true
+echo 'bbEEam167' | sudo -S pkill -9 -f xapp_kpm_moni || true
+echo 'bbEEam167' | sudo -S pkill -9 -f sub.py || true
 sleep 1
 
 # 3. ตรวจสอบความสะอาดของพอร์ตและอุปกรณ์วิทยุ

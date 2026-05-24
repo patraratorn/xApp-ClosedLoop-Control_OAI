@@ -7,7 +7,7 @@
 # กำหนดค่าตัวแปรเส้นทางหลัก
 RAW_OUT_DIR="/home/beam/.gemini/tmp/demo"
 RAW_FILE="${RAW_OUT_DIR}/L1_metrics_RIS.raw"
-GNB_CONF="/home/beam/openairinterface5g/targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.106PRB.usrpb210.custom.conf"
+GNB_CONF="/home/beam/openairinterface5g/targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.fr1.52PRB.usrpb210.custom.conf"
 
 echo "===================================================================="
 echo "📡  O-RAN REAL HARDWARE SYSTEM LAUNCHER (TMUX ORCHESTRATOR)      📡"
@@ -15,10 +15,10 @@ echo "===================================================================="
 
 # 1. ตรวจสอบและเคลียร์โปรเซสและไฟล์ตกค้าง
 echo "🧹 [1/4] ทำการล้างพอร์ตระบบและปิดโปรเซสตกค้าง..."
-sudo pkill -f nearRT-RIC
-sudo pkill -f nr-softmodem
-sudo pkill -f parse_t_tracer_ris.py
-sudo pkill -f record
+echo 'bbEEam167' | sudo -S pkill -f nearRT-RIC
+echo 'bbEEam167' | sudo -S pkill -f nr-softmodem
+echo 'bbEEam167' | sudo -S pkill -f parse_t_tracer_ris.py
+echo 'bbEEam167' | sudo -S pkill -f record
 rm -f "$RAW_FILE"
 sleep 2
 
