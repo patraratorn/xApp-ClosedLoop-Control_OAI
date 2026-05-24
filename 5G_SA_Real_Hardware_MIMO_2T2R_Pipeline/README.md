@@ -17,16 +17,15 @@
 
 ```mermaid
 graph TD
-    A["5G CPE (UE) ส่งคลื่น SRS จริง"] -->|คลื่นวิทยุย่าน n78 (MIMO 2T2R)| B["USRP B210 (gNB Transceiver)"]
-    B -->|สกัดคุณลักษณะที่ L1 PHY| C["OAI gNB (L1 PHY Software)"]
-    C -->|ส่ง telemetry ผ่าน T-Tracer API| D["record (T-Tracer Tool)"]
+    A["5G CPE UE ส่งคลื่น SRS จริง"] -->|คลื่นวิทยุย่าน n78 MIMO 2T2R| B["USRP B210 gNB Transceiver"]
+    B -->|สกัดคุณลักษณะที่ L1 PHY| C["OAI gNB L1 PHY Software"]
+    C -->|ส่ง telemetry ผ่าน T-Tracer API| D["record T-Tracer Tool"]
     D -->|เขียนไฟล์ดิบแบบ Binary| E["L1_metrics_RIS.raw"]
     E -->|ดักจับและวิเคราะห์ใน 0.25 วินาที| F["parse_t_tracer_ris.py"]
-    F -->|บันทึกพารามิเตอร์ฟิสิกส์| G["srs_dataset_real_hardware.csv (768 SC)"]
-    G -->|แปลงมิติ Complex Linear Interpolation| H["srs_adapter.py (ในโฟลเดอร์ทีม AoA)"]
-    H -->|บันทึก Cache .npy 4 ไฟล์| I["cache/ (1008 SC)"]
-    I -->|โหลด Dataset ในบรรทัดเดียว| J["PyTorch Model (PhaseNet2 / CSINet2 / CovNet2)"]
-end
+    F -->|บันทึกพารามิเตอร์ฟิสิกส์| G["srs_dataset_real_hardware.csv 768 SC"]
+    G -->|แปลงมิติ Complex Linear Interpolation| H["srs_adapter.py ในโฟลเดอร์ทีม AoA"]
+    H -->|บันทึก Cache .npy 4 ไฟล์| I["cache 1008 SC"]
+    I -->|โหลด Dataset ในบรรทัดเดียว| J["PyTorch Model PhaseNet2 CSINet2 CovNet2"]
 ```
 
 ---
