@@ -1,0 +1,11 @@
+Blacklisted PRBs 0/51
+-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-2.-2.-2.
+-31.-2.-2.-2.-2.-2.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-4.-7.
+-7.
+max_IO = 29 (22), min_I0 = 0 (25), avg_I0 = 31 dB(27.27.)
+PRACH I0 = 14.1 dB
+DLSCH RNTI 4537: current_Qm 2, current_RI 2, total_bytes TX 1364163
+ULSCH RNTI 4537, 377: ulsch_power[0] 43,9 ulsch_noise_power[0] 27.3, sync_pos -3
+                  ulsch_power[1] 44.8, ulsch_noise_power[1] 27.4
+                 round_trials 1489(5.2e-02):77(0.0e+00):0(0.0e+00):0, DTX 0, current_Qm 4, current_RI 2, total_bytes RX/SCHED 0/61527
+
